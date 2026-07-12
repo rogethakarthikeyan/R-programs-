@@ -1,0 +1,92 @@
+library(shiny)
+
+ui <- fluidPage(
+  titlePanel("🎮 Tic Tac Toe"),
+  
+  tags$style("
+    .btn-cell { width:100px; height:100px; font-size:36px; 
+                font-weight:bold; margin:4px; }
+    .x-btn { color: #e74c3c; }
+    .o-btn { color: #3498db; }
+  "),
+  
+  mainPanel(
+    h3(textOutput("status")),
+    br(),
+    fluidRow(
+      actionButton("b1","", class="btn-cell"),
+      actionButton("b2","", class="btn-cell"),
+      actionButton("b3","", class="btn-cell")
+    ),
+    fluidRow(
+      actionButton("b4","", class="btn-cell"),
+      actionButton("b5","", class="btn-cell"),
+      actionButton("b6","", class="btn-cell")
+    ),
+    fluidRow(
+      actionButton("b7","", class="btn-cell"),
+      actionButton("b8","", class="btn-cell"),
+      actionButton("b9","", class="btn-cell")
+    ),
+    br(),
+    actionButton("reset", "🔄 Restart Game",
+                 style="background:#2ecc71;color:white;padding:10px 24px;font-size:15px;")
+  )
+)
+
+server <- function(input, output, session) {
+  
+  board  <- reactiveVal(rep("", 9))
+  player <- reactiveVal("X")
+  active <- reactiveVal(TRUE)
+  
+  wins <- list(c(1,2,3),c(4,5,6),c(7,8,9),
+               c(1,4,7),c(2,5,8),c(3,6,9),
+               c(1,5,9),c(3,5,7))
+  
+  check_winner <- function(b) {
+    for (w in wins)
+      if (b[w[1]] != "" && b[w[1]]==b[w[2]] && b[w[2]]==b[w[3]])
+        return(b[w[1]])
+    if (all(b != "")) return("Draw")
+    return(NULL)
+  }
+  
+  make_move <- function(i) {
+    b <- board()
+    if (!active() || b[i] != "") return()
+    b[i] <- player()
+    board(b)
+    result <- check_winner(b)
+    if (!is.null(result)) { active(FALSE) }
+    else player(ifelse(player()=="X","O","X"))
+  }
+  
+  for (i in 1:9) {
+    local({
+      idx <- i
+      observeEvent(input[[paste0("b",idx)]], { make_move(idx) })
+    })
+  }
+  
+  observeEvent(input$reset, {
+    board(rep("", 9)); player("X"); active(TRUE)
+    for (i in 1:9)
+      updateActionButton(session, paste0("b",i), label="")
+  })
+  
+  observe({
+    b <- board()
+    for (i in 1:9)
+      updateActionButton(session, paste0("b",i), label=b[i])
+  })
+  
+  output$status <- renderText({
+    result <- check_winner(board())
+    if (is.null(result)) paste("Player", player(), "Turn")
+    else if (result == "Draw") "It's a Draw! 🤝"
+    else paste("Player", result, "Wins! 🎉")
+  })
+}
+
+shinyApp(ui=ui, server=server)
