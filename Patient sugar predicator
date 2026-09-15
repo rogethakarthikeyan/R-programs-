@@ -1,0 +1,57 @@
+library(shiny)
+
+ui <- fluidPage(
+  titlePanel("Patient Admission Surge Predictor"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      sliderInput("arrival_rate", "Hourly Arrival Rate:",
+                  min = 1, max = 20, value = 6),
+      
+      sliderInput("beds", "Emergency Bed Capacity:",
+                  min = 5, max = 50, value = 20),
+      
+      numericInput("hours", "Prediction Window:",
+                   value = 4, min = 1, max = 24)
+    ),
+    
+    mainPanel(
+      h3("Surge Prediction"),
+      verbatimTextOutput("result"),
+      plotOutput("distribution")
+    )
+  )
+)
+
+server <- function(input, output) {
+  
+  output$result <- renderText({
+    lambda <- input$arrival_rate * input$hours
+    probability <- 1 - ppois(input$beds, lambda)
+    
+    paste(
+      "Emergency Beds:", input$beds,
+      "\nHourly Arrival Rate:", input$arrival_rate,
+      "\nPrediction Window:", input$hours, "hours",
+      "\nExpected Arrivals:", lambda,
+      "\nBed Shortage Probability:",
+      paste0(round(probability * 100, 2), "%")
+    )
+  })
+  
+  output$distribution <- renderPlot({
+    lambda <- input$arrival_rate * input$hours
+    x <- 0:max(input$beds + 20, ceiling(lambda + 20))
+    
+    plot(x, dpois(x, lambda),
+         type = "h",
+         lwd = 3,
+         xlab = "Patient Arrivals",
+         ylab = "Probability",
+         main = "Patient Arrival Distribution")
+    
+    abline(v = input$beds, lty = 2, lwd = 2)
+  })
+}
+
+shinyApp(ui = ui, server = server)
